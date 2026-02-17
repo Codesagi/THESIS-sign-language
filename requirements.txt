@@ -1,0 +1,33 @@
+# ============================================================
+# requirements.txt
+# Sign Language Recognition System
+#
+# Install:  pip install -r requirements.txt
+#
+# Python 3.10 recommended (tested on 3.10.x)
+# ============================================================
+
+# ── Computer Vision & Hand Tracking ─────────────────────────
+opencv-python>=4.8.0,<4.11.0
+mediapipe==0.10.9          # pin: API changed in 0.10.10+
+
+# ── Numerical ────────────────────────────────────────────────
+numpy>=1.24.0,<2.0.0       # <2.0 required by mediapipe + tensorflow
+
+# ── Database ─────────────────────────────────────────────────
+supabase>=2.0.0,<3.0.0
+postgrest>=0.16.0           # pulled by supabase, pin to avoid conflicts
+
+# ── 3D Visualisation ─────────────────────────────────────────
+pyvista>=0.43.0,<0.45.0
+vtk>=9.2.0,<9.4.0
+
+# ── Machine Learning ─────────────────────────────────────────
+tensorflow>=2.13.0,<2.16.0  # 2.16 drops Keras 2 API
+scikit-learn>=1.3.0,<1.6.0
+joblib>=1.3.0
+
+# ── Utilities ────────────────────────────────────────────────
+tqdm>=4.65.0                # progress bars in ingest_dataset
+protobuf>=3.20.0,<4.0.0     # mediapipe hard requirement
+matplotlib>=3.7.0           # confusion matrix in train_models.py
