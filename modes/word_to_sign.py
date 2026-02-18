@@ -11,7 +11,7 @@ from visualization.hand_3d_combined import show_combined_3d_camera_view
 
 
 def run_word_to_sign_mode(db_client, language: str):
-    """Word picker → combined 3D + camera viewer loop."""
+    """Word picker → mode selection → viewer loop."""
     
     # Load reference samples for visualization
     reference_samples = {}
@@ -74,7 +74,45 @@ def run_word_to_sign_mode(db_client, language: str):
         print(f"[ERROR] No reference samples available. Exiting Word-to-Sign mode.")
         return
     
-    print(f"[INFO] Word-to-Sign mode: {language}. Pick words to learn.")
+    # ── Ask user to choose mode ───────────────────────────────
+    from tkinter import Tk, Button, Label
+    
+    mode_choice = [None]  # closure workaround
+    
+    def _choose_ar():
+        mode_choice[0] = "ar"
+        root.destroy()
+    
+    def _choose_3d():
+        mode_choice[0] = "3d"
+        root.destroy()
+    
+    root = Tk()
+    root.title(f"Word-to-Sign: {language}")
+    root.geometry("400x200")
+    root.resizable(False, False)
+    
+    Label(root, text=f"Choose Learning Mode", font=("Arial", 14, "bold")).pack(pady=20)
+    
+    Button(
+        root, text="AR Overlay Mode (2D skeleton + real-time feedback)",
+        font=("Arial", 11), width=40, height=2,
+        bg="#4CAF50", fg="white", command=_choose_ar
+    ).pack(pady=5)
+    
+    Button(
+        root, text="3D Viewer Mode (rotate 3D hand model)",
+        font=("Arial", 11), width=40, height=2,
+        bg="#2196F3", fg="white", command=_choose_3d
+    ).pack(pady=5)
+    
+    root.mainloop()
+    
+    if mode_choice[0] is None:
+        return  # user closed window
+    
+    chosen_mode = mode_choice[0]
+    print(f"[INFO] Word-to-Sign mode: {language} ({chosen_mode.upper()}). Pick words to learn.")
     
     # Main loop
     while True:
@@ -86,11 +124,20 @@ def run_word_to_sign_mode(db_client, language: str):
             messagebox.showwarning("No Data", f"No reference sample found for '{label}'")
             continue
         
-        # Show combined 3D + camera view
+        # ── Launch chosen viewer ──────────────────────────────
         try:
-            show_combined_3d_camera_view(reference_samples, language, label)
+            if chosen_mode == "ar":
+                from modes.word_to_sign_ar import run_ar_word_to_sign
+                run_ar_word_to_sign(reference_samples, language, label)
+            else:  # 3d
+                # Lazy import 3D viewer (defers pyvista/vtk load)
+                from visualization.hand_3d_combined import show_combined_3d_camera_view
+                show_combined_3d_camera_view(reference_samples, language, label)
         except Exception as e:
             print(f"[ERROR] Visualization failed: {e}")
             import traceback
             traceback.print_exc()
-            messagebox.showerror("Error", f"Failed to show 3D visualization:\n{e}\n\nMake sure PyVista is installed:\npip install pyvista vtk")
+            err_msg = f"Failed to show {chosen_mode.upper()} visualization:\n{e}"
+            if chosen_mode == "3d":
+                err_msg += "\n\nMake sure PyVista is installed:\npip install pyvista vtk"
+            messagebox.showerror("Error", err_msg)
