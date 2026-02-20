@@ -77,42 +77,42 @@ def run_word_to_sign_mode(db_client, language: str):
     # ── Ask user to choose mode ───────────────────────────────
     from tkinter import Tk, Button, Label
     
-    mode_choice = [None]  # closure workaround
+    mode_choice = [None]
     
-    def _choose_ar():
-        mode_choice[0] = "ar"
+    def _choose_overlay():
+        mode_choice[0] = "overlay"
         root.destroy()
     
-    def _choose_3d():
-        mode_choice[0] = "3d"
+    def _choose_viewer():
+        mode_choice[0] = "viewer"
         root.destroy()
     
     root = Tk()
     root.title(f"Word-to-Sign: {language}")
-    root.geometry("400x200")
+    root.geometry("500x180")
     root.resizable(False, False)
     
-    Label(root, text=f"Choose Learning Mode", font=("Arial", 14, "bold")).pack(pady=20)
+    Label(root, text=f"Choose Learning Mode", font=("Arial", 14, "bold")).pack(pady=15)
     
     Button(
-        root, text="AR Overlay Mode (2D skeleton + real-time feedback)",
-        font=("Arial", 11), width=40, height=2,
-        bg="#4CAF50", fg="white", command=_choose_ar
+        root, text="3D Overlay (mesh on camera, draggable)",
+        font=("Arial", 11), width=45, height=2,
+        bg="#FF9800", fg="white", command=_choose_overlay
     ).pack(pady=5)
     
     Button(
-        root, text="3D Viewer Mode (rotate 3D hand model)",
-        font=("Arial", 11), width=40, height=2,
-        bg="#2196F3", fg="white", command=_choose_3d
+        root, text="3D Viewer (separate window, rotatable)",
+        font=("Arial", 11), width=45, height=2,
+        bg="#2196F3", fg="white", command=_choose_viewer
     ).pack(pady=5)
     
     root.mainloop()
     
     if mode_choice[0] is None:
-        return  # user closed window
+        return
     
     chosen_mode = mode_choice[0]
-    print(f"[INFO] Word-to-Sign mode: {language} ({chosen_mode.upper()}). Pick words to learn.")
+    print(f"[INFO] Word-to-Sign mode: {language} ({chosen_mode.upper()})")
     
     # Main loop
     while True:
@@ -126,18 +126,19 @@ def run_word_to_sign_mode(db_client, language: str):
         
         # ── Launch chosen viewer ──────────────────────────────
         try:
-            if chosen_mode == "ar":
-                from modes.word_to_sign_ar import run_ar_word_to_sign
-                run_ar_word_to_sign(reference_samples, language, label)
-            else:  # 3d
-                # Lazy import 3D viewer (defers pyvista/vtk load)
+            if chosen_mode == "overlay":
+                from modes.word_to_sign_overlay import run_word_to_sign_overlay
+                run_word_to_sign_overlay(reference_samples, language, label)
+            
+            else:  # viewer
                 from visualization.hand_3d_combined import show_combined_3d_camera_view
                 show_combined_3d_camera_view(reference_samples, language, label)
+        
         except Exception as e:
             print(f"[ERROR] Visualization failed: {e}")
             import traceback
             traceback.print_exc()
             err_msg = f"Failed to show {chosen_mode.upper()} visualization:\n{e}"
-            if chosen_mode == "3d":
+            if chosen_mode == "viewer":
                 err_msg += "\n\nMake sure PyVista is installed:\npip install pyvista vtk"
             messagebox.showerror("Error", err_msg)

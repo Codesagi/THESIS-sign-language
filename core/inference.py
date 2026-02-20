@@ -34,12 +34,16 @@ class CachedPredictor:
         frame_skip: int = 3,
         cnn_weight: float = 0.6,
         rf_weight: float = 0.4,
+        use_cnn: bool = True,
+        use_rf: bool = True,
     ):
         self.cnn_path = cnn_path
         self.rf_path = rf_path
         self.frame_skip = frame_skip
         self.cnn_weight = cnn_weight
         self.rf_weight = rf_weight
+        self.use_cnn = use_cnn
+        self.use_rf = use_rf
         
         # Lazy-loaded engine (imports TF/sklearn only when needed)
         self._engine = None
