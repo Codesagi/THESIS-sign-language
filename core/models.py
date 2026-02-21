@@ -25,9 +25,12 @@ import joblib
 try:
     import tensorflow as tf
     from tensorflow import keras
+    _ = tf.__version__    
     HAS_TF = True
-except ImportError as _tf_err:
+except (ImportError, AttributeError):
     HAS_TF = False
+    tf    = None  # type: ignore
+    keras = None  # type: ignore
     print(f"[models] TensorFlow import failed: {_tf_err}")
 except Exception as _tf_err:
     # Catches DLL load failures on Windows (VC++ runtime missing)

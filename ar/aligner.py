@@ -79,10 +79,9 @@ class HandAligner:
         smooth: bool = True,
     ) -> float:
         """
-        Compute alignment similarity (0-100%).
+        Compute alignment similarity (0-100%) using cosine similarity.
         
-        Uses vectorized Euclidean distance over all 21 joints.
-        Lower distance = higher similarity.
+        Uses the SAME metric as the ML inference engine for consistency.
         
         Parameters
         ----------
@@ -95,13 +94,19 @@ class HandAligner:
         """
         user_norm = self._normalize(user_landmarks)
         
-        # Vectorized distance
-        diff = user_norm - self.reference
-        dist = np.linalg.norm(diff, axis=1).mean()  # mean distance per joint
+        # Flatten to 1D vectors for cosine similarity
+        ref_flat = self.reference.ravel()
+        user_flat = user_norm.ravel()
         
-        # Convert to similarity % (empirical sigmoid)
-        # dist=0 → 100%, dist=0.5 → ~50%, dist=1.0 → ~10%
-        similarity = 100.0 * np.exp(-2.0 * dist)
+        # Cosine similarity
+        norm_ref = np.linalg.norm(ref_flat)
+        norm_user = np.linalg.norm(user_flat)
+        
+        if norm_ref < 1e-9 or norm_user < 1e-9:
+            similarity = 0.0
+        else:
+            cos_sim = float(np.dot(ref_flat, user_flat) / (norm_ref * norm_user))
+            similarity = max(0.0, cos_sim * 100.0)  # convert to %
         
         if smooth:
             self._similarity_history.append(similarity)

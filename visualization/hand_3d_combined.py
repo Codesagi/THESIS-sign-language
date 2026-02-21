@@ -303,3 +303,233 @@ def show_combined_3d_camera_view(reference_samples: dict, language: str, label: 
         hands.close()
         t3d.join(timeout=3.0)
         print(f"[INFO] Session ended for '{label}'\n")
+
+
+# ============================================================
+# LIVE 3D SKELETON VIEWER  (for Sign-to-Word mode)
+# ============================================================
+
+HAND_CONNECTIONS = [
+    (0,1),(1,2),(2,3),(3,4),
+    (0,5),(5,6),(6,7),(7,8),
+    (0,9),(9,10),(10,11),(11,12),
+    (0,13),(13,14),(14,15),(15,16),
+    (0,17),(17,18),(19,20),(17,18),(18,19),(19,20),
+    (5,9),(9,13),(13,17),
+]
+
+FINGER_COLORS = [
+    (0.85, 0.35, 0.35),   # 0  wrist    — red
+    (0.95, 0.40, 0.40),   # 1- thumb   — bright red
+    (0.95, 0.40, 0.40),
+    (0.95, 0.40, 0.40),
+    (0.95, 0.40, 0.40),
+    (0.35, 0.90, 0.35),   # 5- index   — green
+    (0.35, 0.90, 0.35),
+    (0.35, 0.90, 0.35),
+    (0.35, 0.90, 0.35),
+    (0.35, 0.60, 0.95),   # 9- middle  — blue
+    (0.35, 0.60, 0.95),
+    (0.35, 0.60, 0.95),
+    (0.35, 0.60, 0.95),
+    (0.95, 0.90, 0.30),   # 13- ring   — yellow
+    (0.95, 0.90, 0.30),
+    (0.95, 0.90, 0.30),
+    (0.95, 0.90, 0.30),
+    (0.90, 0.45, 0.90),   # 17- pinky  — pink
+    (0.90, 0.45, 0.90),
+    (0.90, 0.45, 0.90),
+    (0.90, 0.45, 0.90),
+]
+
+
+def _landmarks_to_3d_points(landmarks, scale: float = 10.0) -> np.ndarray:
+    """
+    Convert a list of 21 landmark objects or dicts → (21, 3) world-space
+    points suitable for PyVista (Y and Z flipped to match screen coords).
+    """
+    if hasattr(landmarks[0], "x"):
+        pts = np.array([[lm.x, lm.y, lm.z] for lm in landmarks], dtype=np.float32)
+    else:
+        pts = np.array([[lm["x"], lm["y"], lm["z"]] for lm in landmarks], dtype=np.float32)
+
+    # Wrist to origin, palm-scale normalise
+    pts -= pts[0]
+    palm = float(np.linalg.norm(pts[9]))
+    if palm > 1e-6:
+        pts /= palm
+
+    pts *= scale
+    pts[:, 1] *= -1   # flip Y (screen → 3-D)
+    pts[:, 2] *= -1   # flip Z
+
+    return pts
+
+
+def _build_live_skeleton(pts: np.ndarray, scale: float = 10.0):
+    """
+    Build a PyVista MultiBlock skeleton (joints + bones) from 21 points.
+    Returns the MultiBlock and a flat list of sphere/tube actors in
+    insertion order so we can update coordinates later.
+    """
+    mb = pv.MultiBlock()
+
+    # joints
+    for i, p in enumerate(pts):
+        r = 0.025 * scale if i == 0 else 0.018 * scale
+        s = pv.Sphere(radius=r, center=p, phi_resolution=10, theta_resolution=10)
+        mb.append(s, f"j{i}")
+
+    # bones
+    for a, b in HAND_CONNECTIONS:
+        line = pv.Line(pts[a], pts[b])
+        tube = line.tube(radius=0.009 * scale, n_sides=8)
+        mb.append(tube, f"b{a}_{b}")
+
+    return mb
+
+
+def _run_live_3d_skeleton(shared: dict, scale: float = 10.0):
+    """
+    Background thread that owns the PyVista window.
+
+    shared["pts"]     — (21,3) ndarray, written by camera thread each frame
+    shared["running"] — set False to close
+    shared["closed"]  — set True when window exits
+    shared["label"]   — current prediction label string
+    shared["conf"]    — current confidence float
+    """
+    try:
+        # Neutral hand for initial render (flat, spread fingers)
+        init_pts = np.zeros((21, 3), dtype=np.float32)
+        for i in range(5):
+            for j in range(4):
+                idx = 1 + i * 4 + j
+                init_pts[idx] = [(-2 + i) * 0.4 * scale,
+                                  -(j + 1) * 0.3 * scale,
+                                  0]
+
+        plotter = pv.Plotter(
+            window_size=[640, 640],
+            title="Live 3D Skeleton  |  Drag to rotate"
+        )
+        plotter.set_background("#111118")
+
+        # Add skeleton actors — store references for in-place updates
+        actors   = []
+        mb       = _build_live_skeleton(init_pts, scale)
+
+        for i in range(mb.n_blocks):
+            mesh  = mb[i]
+            name  = mb.get_block_name(i) or ""
+            is_j  = name.startswith("j")
+
+            if is_j:
+                jidx  = int(name[1:])
+                color = FINGER_COLORS[jidx]
+                a = plotter.add_mesh(mesh, color=color,
+                                     smooth_shading=True, specular=0.6,
+                                     lighting=True)
+            else:
+                a = plotter.add_mesh(mesh, color=(0.70, 0.70, 0.70),
+                                     smooth_shading=True, opacity=0.85)
+            actors.append((name, mesh, a))
+
+        # Prediction overlay text (top-left)
+        txt_actor = plotter.add_text(
+            "Detecting…",
+            position="upper_left", font_size=14, color="white"
+        )
+
+        try:
+            plotter.show_grid(color="#333344", opacity=0.25)
+        except TypeError:
+            plotter.show_grid(color="#333344")
+
+        plotter.camera_position = [(0, -2, 6), (0, -2, 0), (0, 1, 0)]
+        plotter.enable_trackball_style()
+        plotter.show(auto_close=False, interactive_update=True)
+
+        last_pts = init_pts.copy()
+
+        while shared["running"]:
+            new_pts = shared.get("pts")
+
+            if new_pts is not None and not np.array_equal(new_pts, last_pts):
+                # Rebuild skeleton with new joint positions
+                # We update point coordinates in-place on each mesh
+                ji = 0   # joint index
+                bi = 0   # bone index
+
+                for name, mesh, actor in actors:
+                    if name.startswith("j"):
+                        # Sphere — move by translating all its points
+                        jidx    = int(name[1:])
+                        delta   = new_pts[jidx] - last_pts[jidx]
+                        mesh.points += delta
+
+                    else:
+                        # Tube — rebuild from new endpoints
+                        parts   = name[1:].split("_")
+                        a_idx, b_idx = int(parts[0]), int(parts[1])
+                        new_line = pv.Line(new_pts[a_idx], new_pts[b_idx])
+                        new_tube = new_line.tube(radius=0.009 * scale, n_sides=8)
+                        mesh.copy_from(new_tube)
+
+                last_pts = new_pts.copy()
+
+            # Update prediction text
+            label = shared.get("label", "")
+            conf  = shared.get("conf",  0.0)
+            if label:
+                txt_actor.SetInput(
+                    f"Sign: {label}  ({conf:.1f}%)\n"
+                    "Drag to rotate  •  Scroll to zoom"
+                )
+            else:
+                txt_actor.SetInput("No hand detected\nDrag to rotate")
+
+            plotter.update()
+            time.sleep(0.033)   # ~30 fps
+
+        plotter.close()
+
+    except Exception as e:
+        import traceback
+        print(f"[3D live] Error: {e}")
+        traceback.print_exc()
+    finally:
+        shared["closed"] = True
+
+
+def start_live_3d_skeleton(scale: float = 10.0) -> dict:
+    """
+    Launch the live 3D skeleton window in a background thread.
+
+    Returns the shared-state dict.  The caller (sign_to_word camera loop)
+    writes to it every frame:
+
+        shared["pts"]   = <(21,3) ndarray>   # current landmark positions
+        shared["label"] = "A"                 # top prediction
+        shared["conf"]  = 87.3               # confidence %
+
+    Call  shared["running"] = False  to close the window.
+    """
+    import threading
+
+    shared = {
+        "pts":     None,
+        "label":   "",
+        "conf":    0.0,
+        "running": True,
+        "closed":  False,
+    }
+
+    t = threading.Thread(
+        target=_run_live_3d_skeleton,
+        args=(shared, scale),
+        daemon=True,
+    )
+    t.start()
+    time.sleep(0.6)   # let the window initialise before camera starts
+    return shared

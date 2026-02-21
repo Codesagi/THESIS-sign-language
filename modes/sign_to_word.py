@@ -166,7 +166,7 @@ def run_sign_to_word_mode(db_client, language: str):
         
         draw_status(frame)
         draw_controls_hint(frame, "R: Record  |  ESC: Exit")
-        draw_language_badge(frame, language, lang_color)
+        draw_language_badge(frame, language)  # Fixed: removed extra argument
         
         # Display single view (removed dual view - major performance gain)
         cv2.imshow("Sign-to-Word", frame)

@@ -161,12 +161,13 @@ class InferenceEngine:
         if os.path.exists(self.cnn_path):
             try:
                 import tensorflow as tf
+                _ = tf.__version__   # guard against shadow file in project dir
                 self._cnn = tf.keras.models.load_model(self.cnn_path)
                 enc_p = self.cnn_path.replace(".h5", "_labels.pkl")
                 if os.path.exists(enc_p):
                     self._enc = joblib.load(enc_p)
                 print(f"[Engine] CNN  loaded ← {self.cnn_path}")
-            except Exception as e:
+            except (ImportError, AttributeError, Exception) as e:
                 print(f"[Engine] CNN  failed: {e}")
 
         if os.path.exists(self.rf_path):
