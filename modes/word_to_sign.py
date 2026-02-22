@@ -76,8 +76,16 @@ def run_word_to_sign_mode(db_client, language: str):
     
     mode_choice = [None]
     
-    def _choose_hand_ar():
-        mode_choice[0] = "hand_ar"
+    def _choose_2d_ar():
+        mode_choice[0] = "2d_ar"
+        root.destroy()
+    
+    def _choose_3d_ar():
+        mode_choice[0] = "3d_ar"
+        root.destroy()
+    
+    def _choose_aruco_ar():
+        mode_choice[0] = "aruco_ar"
         root.destroy()
     
     def _choose_viewer():
@@ -86,22 +94,34 @@ def run_word_to_sign_mode(db_client, language: str):
     
     root = Tk()
     root.title(f"Word-to-Sign: {language}")
-    root.geometry("550x180")
+    root.geometry("600x280")
     root.resizable(False, False)
     
     Label(root, text=f"Choose Learning Mode", font=("Arial", 14, "bold")).pack(pady=15)
     
     Button(
-        root, text="Hand AR (2D skeleton floats above your hand)",
-        font=("Arial", 11), width=50, height=2,
-        bg="#9C27B0", fg="white", command=_choose_hand_ar
-    ).pack(pady=5)
+        root, text="2D Hand AR (skeleton floats above hand, fast)",
+        font=("Arial", 11), width=55, height=2,
+        bg="#4CAF50", fg="white", command=_choose_2d_ar
+    ).pack(pady=3)
+    
+    Button(
+        root, text="3D Mesh AR (full 3D mesh floats, phone anchor)",
+        font=("Arial", 11), width=55, height=2,
+        bg="#9C27B0", fg="white", command=_choose_3d_ar
+    ).pack(pady=3)
+    
+    Button(
+        root, text="ARuco AR (marker-based, precise) [EXPERIMENTAL]",
+        font=("Arial", 11), width=55, height=2,
+        bg="#FF5722", fg="white", command=_choose_aruco_ar
+    ).pack(pady=3)
     
     Button(
         root, text="3D Viewer (separate rotatable window)",
-        font=("Arial", 11), width=50, height=2,
+        font=("Arial", 11), width=55, height=2,
         bg="#2196F3", fg="white", command=_choose_viewer
-    ).pack(pady=5)
+    ).pack(pady=3)
     
     root.mainloop()
     
@@ -123,11 +143,20 @@ def run_word_to_sign_mode(db_client, language: str):
         
         # ── Launch chosen mode ─────────────────────────────────
         try:
-            if chosen_mode == "hand_ar":
-                # Use 2D AR - stable, no threading issues
-                print("[INFO] Starting 2D Hand AR (skeleton floats above hand)")
+            if chosen_mode == "2d_ar":
+                print("[INFO] Starting 2D Hand AR")
                 from modes.word_to_sign_hand_2d import run_hand_2d_ar
                 run_hand_2d_ar(reference_samples, language, label)
+            
+            elif chosen_mode == "3d_ar":
+                print("[INFO] Starting 3D Mesh AR (phone-anchored)")
+                from modes.word_to_sign_hand_3d_final import run_hand_3d_ar_final
+                run_hand_3d_ar_final(reference_samples, language, label)
+            
+            elif chosen_mode == "aruco_ar":
+                print("[INFO] Starting ARuco Marker AR (experimental)")
+                from modes.word_to_sign_aruco import run_aruco_ar
+                run_aruco_ar(reference_samples, language, label)
             
             else:  # viewer
                 from visualization.hand_3d_combined import show_combined_3d_camera_view
@@ -139,4 +168,4 @@ def run_word_to_sign_mode(db_client, language: str):
             traceback.print_exc()
             messagebox.showerror("Error", 
                 f"Failed to show {chosen_mode.upper()}:\n{e}\n\n"
-                f"Make sure dependencies installed: pip install mediapipe opencv-python")
+                f"Check dependencies: pip install mediapipe opencv-python pyvista")

@@ -1,4 +1,4 @@
-# AR module (cleaned up - only essentials)
 from .aligner import HandAligner
+from .mesh_renderer import MeshRenderer, composite_mesh_on_frame
 
-__all__ = ["HandAligner"]
+__all__ = ["HandAligner", "MeshRenderer", "composite_mesh_on_frame"]
