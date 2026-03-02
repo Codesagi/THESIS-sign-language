@@ -14,12 +14,12 @@ def show_language_dialog() -> Optional[str]:
     root = tk.Tk()
     root.title("Sign Language Recognizer")
     root.resizable(False, False)
-    root.geometry("380x220")
+    root.geometry("380x270")  # Taller for exit button
     root.configure(bg="#1e1e2e")
 
     root.update_idletasks()
     x = (root.winfo_screenwidth()  - 380) // 2
-    y = (root.winfo_screenheight() - 220) // 2
+    y = (root.winfo_screenheight() - 270) // 2
     root.geometry(f"+{x}+{y}")
 
     tk.Label(
@@ -59,6 +59,16 @@ def show_language_dialog() -> Optional[str]:
     )
     fsl_btn.grid(row=0, column=1, padx=12)
 
+    # Exit button
+    exit_btn = tk.Button(
+        root, text="✕ Exit Application",
+        font=("Segoe UI", 10),
+        bg="#c62828", fg="white", relief="flat",
+        activebackground="#b71c1c", cursor="hand2",
+        width=25, command=root.destroy  # Returns None
+    )
+    exit_btn.pack(pady=(25, 10))
+
     root.protocol("WM_DELETE_WINDOW", root.destroy)
     root.mainloop()
 
@@ -72,12 +82,12 @@ def show_mode_dialog() -> Optional[str]:
     root = tk.Tk()
     root.title("Translation Mode")
     root.resizable(False, False)
-    root.geometry("450x250")
+    root.geometry("450x300")  # Taller for back button
     root.configure(bg="#1e1e2e")
 
     root.update_idletasks()
     x = (root.winfo_screenwidth()  - 450) // 2
-    y = (root.winfo_screenheight() - 250) // 2
+    y = (root.winfo_screenheight() - 300) // 2
     root.geometry(f"+{x}+{y}")
 
     tk.Label(
@@ -116,6 +126,16 @@ def show_mode_dialog() -> Optional[str]:
         width=18, height=3, command=lambda: pick("word-to-sign")
     )
     w2s_btn.grid(row=0, column=1, padx=12)
+
+    # Back button
+    back_btn = tk.Button(
+        root, text="← Back to Language Selection",
+        font=("Segoe UI", 10),
+        bg="#555", fg="white", relief="flat",
+        activebackground="#666", cursor="hand2",
+        width=30, command=root.destroy  # Returns None
+    )
+    back_btn.pack(pady=(25, 10))
 
     root.protocol("WM_DELETE_WINDOW", root.destroy)
     root.mainloop()

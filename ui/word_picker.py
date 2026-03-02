@@ -30,7 +30,7 @@ def show_word_picker(db_client, language: str) -> str:
              font=("Segoe UI", 14, "bold"), fg="white", bg="#1e1e2e").pack(pady=12)
     
     # Scrollable grid
-    canvas = tk.Canvas(root, bg="#1e1e2e", highlightthickness=0, width=700, height=500)
+    canvas = tk.Canvas(root, bg="#1e1e2e", highlightthickness=0, width=700, height=440)
     scrollbar = tk.Scrollbar(root, orient="vertical", command=canvas.yview)
     scrollable_frame = tk.Frame(canvas, bg="#1e1e2e")
     
@@ -57,8 +57,15 @@ def show_word_picker(db_client, language: str) -> str:
     canvas.pack(side="left", fill="both", expand=True, padx=10, pady=10)
     scrollbar.pack(side="right", fill="y")
     
+    # Back button at bottom
+    back_btn = tk.Button(root, text="← Back to AR Mode Selection",
+                        font=("Segoe UI", 10), bg="#757575", fg="white",
+                        relief="flat", cursor="hand2",
+                        width=40, height=2, command=root.destroy)
+    back_btn.pack(pady=8)
+    
     root.update_idletasks()
-    w, h = 720, 540
+    w, h = 720, 600  # Taller for back button
     x = (root.winfo_screenwidth() - w) // 2
     y = (root.winfo_screenheight() - h) // 2
     root.geometry(f"{w}x{h}+{x}+{y}")

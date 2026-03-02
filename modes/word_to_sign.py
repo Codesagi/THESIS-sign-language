@@ -94,7 +94,7 @@ def run_word_to_sign_mode(db_client, language: str):
     
     root = Tk()
     root.title(f"Word-to-Sign: {language}")
-    root.geometry("600x280")
+    root.geometry("600x330")  # Taller for back button
     root.resizable(False, False)
     
     Label(root, text=f"Choose Learning Mode", font=("Arial", 14, "bold")).pack(pady=15)
@@ -122,6 +122,14 @@ def run_word_to_sign_mode(db_client, language: str):
         font=("Arial", 11), width=55, height=2,
         bg="#2196F3", fg="white", command=_choose_viewer
     ).pack(pady=3)
+    
+    # Back button
+    Button(
+        root, text="← Back to Mode Selection",
+        font=("Arial", 10),
+        width=30, height=1,
+        bg="#757575", fg="white", command=root.destroy  # Returns None
+    ).pack(pady=(10, 5))
     
     root.mainloop()
     
